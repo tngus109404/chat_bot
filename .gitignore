@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+.venv_llm/
+.env
+chat_log.jsonl
+*.jsonl
+.chat_session_id
+.vscode/
+.idea/
