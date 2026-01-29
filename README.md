@@ -139,6 +139,31 @@ RAG 근거 검색 ❌
 따라서 “이전 대화를 기억 못함”
 → Redis 연결 시 session_id 기반 히스토리/캐시로 확장 예정
 
+### 1) 현재 상태(Redis 없음)
+
+- `/chat` 요청이 오면 서버(FastAPI)는 이번에 온 message만 가지고 vLLM에 보냄
+- 즉 vLLM이 받는 입력이 매번 “단발성”이라서
+    - “방금 말한 거 요약해줘” 같은 요청에서 “방금”이 뭔지 알 방법이 없음
+- (지금은) 로그는 `chat_log.jsonl`에 남지만, 그걸 즉시 읽어서 히스토리로 재구성해 쓰는 로직이 없으니 기억이 안 남
+
+### 2) Redis 붙인 상태
+
+요청 흐름이 이렇게 바뀜:
+
+1. 사용자가 `/chat`에 `{session_id, message}`를 보냄
+2. FastAPI가 Redis에서 `session_id`로 이전 대화 리스트를 조회
+    - 예: `history = redis.get("chat:session_id")`
+3. `history + [이번 message]`를 합쳐서 vLLM에 전달
+    - 즉 모델 입력이 “이전 대화 포함 프롬프트”가 됨
+4. vLLM의 답변을 받으면,
+5. Redis에 다시 `history + (user message) + (assistant answer)` 형태로 업데이트 저장
+
+**실제로는** Redis에 전체를 저장해두고, 모델에는
+
+- “최근 일부 + 요약 + (필요 시 검색한 과거)”
+    
+    이런 식으로 보낼 컨텍스트를 제한하는 방식 고려중
+
 
 ## 🗺 로드맵 (Roadmap)
 
